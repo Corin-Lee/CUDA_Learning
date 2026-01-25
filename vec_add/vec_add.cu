@@ -46,7 +46,7 @@ int main() {
     bool success = true;
     for (int i = 0; i < kN; ++i) {
       if (C[i] != A[i] + B[i]) {
-        printf("Error at index %d: want %d, get %d\n", i, C[i], B[i]);
+        printf("Error at index %d: want %d, get %d\n", i, A[i] + B[i], C[i]);
         success = false;
         break;
       }
@@ -56,7 +56,7 @@ int main() {
     }
   }
 
-  free(const_cast<int*>(A));
+  free(A);
   free(B);
   free(C);
 
