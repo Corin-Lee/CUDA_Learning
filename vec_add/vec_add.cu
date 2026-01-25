@@ -1,4 +1,7 @@
+#include <cuda_runtime.h>
+
 #include <cstdio>
+#include <cstdlib>
 
 const int kBlockSize = 256;
 
@@ -13,12 +16,13 @@ int main() {
   const int kN = 100000;
   const size_t kSize = kN * sizeof(int);
 
-  const int* A = (int*)malloc(kSize);
+  int* A = (int*)malloc(kSize);
   int* B = (int*)malloc(kSize);
   int* C = (int*)malloc(kSize);
 
   for (int i = 0; i < kN; ++i) {
-    B[i] += A[i];
+    A[i] = i;
+    B[i] = 2 * i;
   }
 
   int *d_A, *d_B;
@@ -41,7 +45,7 @@ int main() {
   if (cudaGetLastError() == cudaSuccess) {
     bool success = true;
     for (int i = 0; i < kN; ++i) {
-      if (C[i] != B[i]) {
+      if (C[i] != A[i] + B[i]) {
         printf("Error at index %d: want %d, get %d\n", i, C[i], B[i]);
         success = false;
         break;
