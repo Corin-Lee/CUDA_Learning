@@ -4,7 +4,7 @@
 #include <cstdlib>
 
 int main() {
-  const int kN = 1000;
+  const int kN = 10;
   const size_t kSize = kN * sizeof(int);
 
   int* h_a = reinterpret_cast<int*>(malloc(kSize));
@@ -28,6 +28,7 @@ int main() {
         success = false;
         break;
       }
+      printf("h_a[%d] = %d\n", i, h_a[i]);
     }
     if (success) {
       printf("done.\n");
