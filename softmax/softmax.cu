@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -30,6 +31,57 @@ __global__ void SoftmaxV1(const float* in, float* out, const size_t n,
   // out
   for (size_t t = 0; t < c; ++t) {
     row_out[t] *= sum;
+  }
+}
+
+__global__ void SoftmaxV2(const float* in, float* out, const size_t n,
+                          const size_t c) {
+  extern __shared__ float cur_row[];
+  const int block_start = blockIdx.x * c;
+  const int tid = threadIdx.x + block_start;
+  if (threadIdx.x < blockDim.x) {
+    cur_row[threadIdx.x] = in[tid];
+  }
+  // get max value
+  size_t stride = blockDim.x;
+  for (size_t i = threadIdx.x; i + stride < c; i += stride) {
+    cur_row[threadIdx.x] =
+        fmaxf(cur_row[threadIdx.x], out[i + stride + block_start]);
+  }
+  __syncthreads();
+  while (stride / 2 > 0) {
+    stride /= 2;
+    for (size_t j = threadIdx.x; j + stride < c; j += stride) {
+      cur_row[threadIdx.x] = fmaxf(cur_row[threadIdx.x], cur_row[j + stride]);
+    }
+  }
+  __syncthreads();
+  float max_val = cur_row[0];
+  __syncthreads();
+
+  // get sum
+  // __shared__ float cur_row[blockDim.x];
+  stride = blockDim.x;
+  if (threadIdx.x < blockDim.x) {
+    cur_row[threadIdx.x] = expf(in[tid] - max_val);
+  }
+  for (size_t i = threadIdx.x; i + stride < c; i += stride) {
+    out[i] = expf(in[i + stride + block_start] - max_val);
+    cur_row[threadIdx.x] += out[i];
+  }
+  __syncthreads();
+  while (stride / 2 > 0) {
+    stride /= 2;
+    for (size_t j = threadIdx.x; j + stride < c; j += stride) {
+      cur_row[threadIdx.x] += cur_row[j + stride];
+    }
+  }
+  __syncthreads();
+  float sum = 1.0f / out[0];
+
+  // calculate
+  for (size_t i = threadIdx.x; i + stride < c; i += stride) {
+    out[i + block_start] *= sum;
   }
 }
 
@@ -96,7 +148,14 @@ int main() {
   }
 
   auto res = std::make_unique<float[]>(kElemNums);
+
+  // cpu compute part
+  auto start = std::chrono::high_resolution_clock::now();
   SoftmaxCpu(data.get(), res.get(), kBlockNums, kBlockSize);
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> cost = end - start;
+  std::cout << "Softmax Cpu costs " << cost.count() << "ms" << std::endl;
+
   auto data_check = OpenTestFile("expected.bin", kElemNums);
   if (data_check == nullptr) {
     std::cerr << "Read referenced datas failed." << std::endl;
@@ -105,18 +164,29 @@ int main() {
   bool cpu_checked = VerifyResults(res.get(), data_check.get(), kElemNums);
   std::cout << "cpu version check: " << (cpu_checked ? "pass!" : "fail!")
             << std::endl;
-  // reset all 0
+  // output reset all to 0
   for (size_t i = 0; i < kElemNums; ++i) {
     *(res.get() + i) = 0.0f;
   }
 
+  // cuda softmax v1
   float *d_in, *d_out;
   size_t byte_size = kElemNums * sizeof(float);
   cudaMalloc(&d_in, byte_size);
   cudaMalloc(&d_out, byte_size);
   cudaMemcpy(d_in, data.get(), byte_size, cudaMemcpyHostToDevice);
 
+  cudaEvent_t gpu_start, gpu_end;
+  cudaEventCreate(&gpu_start);
+  cudaEventCreate(&gpu_end);
+  cudaEventRecord(gpu_start);
   SoftmaxV1<<<kBlockNums, 1>>>(d_in, d_out, kBlockNums, kBlockSize);
+  cudaEventRecord(gpu_end);
+  cudaEventSynchronize(gpu_end);
+  float gpu_cost = 0.0f;
+  cudaEventElapsedTime(&gpu_cost, gpu_start, gpu_end);
+  printf("GPU 执行时间: %f ms\n", gpu_cost);
+
   cudaMemcpy(res.get(), d_out, byte_size, cudaMemcpyDeviceToHost);
 
   bool gpu_checked1 = VerifyResults(res.get(), data_check.get(), kElemNums);
