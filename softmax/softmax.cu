@@ -91,13 +91,17 @@ int main() {
   const size_t kElemNums = kBlockNums * kBlockSize;
   auto data = OpenTestFile("input.bin", kElemNums);
   if (data == nullptr) {
-    std::cerr << "Read datas failed." << std::endl;
+    std::cerr << "Read input datas failed." << std::endl;
     return -1;
   }
 
   auto res = std::make_unique<float[]>(kElemNums);
   SoftmaxCpu(data.get(), res.get(), kBlockNums, kBlockSize);
   auto data_check = OpenTestFile("expected.bin", kElemNums);
+  if (data_check == nullptr) {
+    std::cerr << "Read referenced datas failed." << std::endl;
+    return -1;
+  }
   bool cpu_checked = VerifyResults(res.get(), data_check.get(), kElemNums);
   std::cout << "cpu version check: " << (cpu_checked ? "pass!" : "fail!")
             << std::endl;
