@@ -17,12 +17,12 @@ __global__ void SoftmaxV1(const float* in, float* out, const size_t n,
   // get max value
   float max_val = row_in[0];
   for (size_t j = 1; j < c; ++j) {
-    max_val = std::fmax(max_val, row_in[j]);
+    max_val = fmaxf(max_val, row_in[j]);
   }
 
   float sum = 0.0f;
   for (size_t k = 0; k < c; ++k) {
-    row_out[k] = std::exp(row_in[k] - max_val);
+    row_out[k] = expf(row_in[k] - max_val);
     sum += row_out[k];
   }
   sum = 1.0f / sum;
@@ -105,11 +105,26 @@ int main() {
   bool cpu_checked = VerifyResults(res.get(), data_check.get(), kElemNums);
   std::cout << "cpu version check: " << (cpu_checked ? "pass!" : "fail!")
             << std::endl;
+  // reset all 0
+  for (size_t i = 0; i < kElemNums; ++i) {
+    *(res.get() + i) = 0.0f;
+  }
 
-  SoftmaxV1<<<kElemNums, 1>>>(data.get(), res.get(), kBlockNums, kBlockSize);
+  float *d_in, *d_out;
+  size_t byte_size = kElemNums * sizeof(float);
+  cudaMalloc(&d_in, byte_size);
+  cudaMalloc(&d_out, byte_size);
+  cudaMemcpy(d_in, data.get(), byte_size, cudaMemcpyHostToDevice);
+
+  SoftmaxV1<<<kBlockNums, 1>>>(d_in, d_out, kBlockNums, kBlockSize);
+  cudaMemcpy(res.get(), d_out, byte_size, cudaMemcpyDeviceToHost);
+
   bool gpu_checked1 = VerifyResults(res.get(), data_check.get(), kElemNums);
   std::cout << "gpu version1 check: " << (gpu_checked1 ? "pass!" : "fail!")
             << std::endl;
+
+  cudaFree(d_in);
+  cudaFree(d_out);
 
   return 0;
 }
