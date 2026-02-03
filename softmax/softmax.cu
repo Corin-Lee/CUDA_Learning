@@ -171,33 +171,6 @@ int main() {
   }
 
   // cuda softmax v1
-  // float *d_in, *d_out;
-  // size_t byte_size = kElemNums * sizeof(float);
-  // cudaMalloc(&d_in, byte_size);
-  // cudaMalloc(&d_out, byte_size);
-  // cudaMemcpy(d_in, data.get(), byte_size, cudaMemcpyHostToDevice);
-
-  // cudaEvent_t gpu_start, gpu_end;
-  // cudaEventCreate(&gpu_start);
-  // cudaEventCreate(&gpu_end);
-  // cudaEventRecord(gpu_start);
-  // SoftmaxV1<<<kBlockNums, 1>>>(d_in, d_out, kBlockNums, kBlockSize);
-  // cudaEventRecord(gpu_end);
-  // cudaEventSynchronize(gpu_end);
-  // float gpu_cost = 0.0f;
-  // cudaEventElapsedTime(&gpu_cost, gpu_start, gpu_end);
-  // printf("GPU 执行时间: %f ms\n", gpu_cost);
-
-  // cudaMemcpy(res.get(), d_out, byte_size, cudaMemcpyDeviceToHost);
-
-  // bool gpu_checked1 = VerifyResults(res.get(), data_check.get(), kElemNums);
-  // std::cout << "gpu version1 check: " << (gpu_checked1 ? "pass!" : "fail!")
-  //           << std::endl;
-
-  // cudaFree(d_in);
-  // cudaFree(d_out);
-
-  // cuda softmax v2
   float *d_in, *d_out;
   size_t byte_size = kElemNums * sizeof(float);
   cudaMalloc(&d_in, byte_size);
@@ -208,15 +181,30 @@ int main() {
   cudaEventCreate(&gpu_start);
   cudaEventCreate(&gpu_end);
   cudaEventRecord(gpu_start);
-
-  SoftmaxV2<<<kBlockNums, 32, 32 * sizeof(float)>>>(d_in, d_out, kBlockNums,
-                                                    kBlockSize);
-
+  SoftmaxV1<<<kBlockNums, 1>>>(d_in, d_out, kBlockNums, kBlockSize);
   cudaEventRecord(gpu_end);
   cudaEventSynchronize(gpu_end);
   float gpu_cost = 0.0f;
   cudaEventElapsedTime(&gpu_cost, gpu_start, gpu_end);
-  printf("GPU 执行时间: %f ms\n", gpu_cost);
+  printf("SoftmaxV1 GPU 执行时间: %f ms\n", gpu_cost);
+
+  cudaMemcpy(res.get(), d_out, byte_size, cudaMemcpyDeviceToHost);
+
+  bool gpu_checked1 = VerifyResults(res.get(), data_check.get(), kElemNums);
+  std::cout << "gpu version1 check: " << (gpu_checked1 ? "pass!" : "fail!")
+            << std::endl;
+
+  // cuda softmax v2
+  cudaMemset(d_out, 0, byte_size);
+
+  cudaEventRecord(gpu_start);
+  SoftmaxV2<<<kBlockNums, 32, 32 * sizeof(float)>>>(d_in, d_out, kBlockNums,
+                                                    kBlockSize);
+  cudaEventRecord(gpu_end);
+  cudaEventSynchronize(gpu_end);
+  gpu_cost = 0.0f;
+  cudaEventElapsedTime(&gpu_cost, gpu_start, gpu_end);
+  printf("SoftmaxV2 GPU 执行时间: %f ms\n", gpu_cost);
 
   cudaMemcpy(res.get(), d_out, byte_size, cudaMemcpyDeviceToHost);
 
@@ -226,5 +214,7 @@ int main() {
 
   cudaFree(d_in);
   cudaFree(d_out);
+  cudaEventDestroy(gpu_start);
+  cudaEventDestroy(gpu_end);
   return 0;
 }
