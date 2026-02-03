@@ -34,53 +34,54 @@ __global__ void SoftmaxV1(const float* in, float* out, const size_t n,
   }
 }
 
+// n * c, 假设每行初始化 32 个线程, 每行数据量是32的倍数
 __global__ void SoftmaxV2(const float* in, float* out, const size_t n,
                           const size_t c) {
   extern __shared__ float cur_row[];
   const int block_start = blockIdx.x * c;
-  const int tid = threadIdx.x + block_start;
-  if (threadIdx.x < blockDim.x) {
-    cur_row[threadIdx.x] = in[tid];
+  const int tid = threadIdx.x;
+  // 1. get max value
+  float local_max = -INFINITY;
+  for (size_t i = tid; i < c; i += blockDim.x) {
+    local_max = fmaxf(in[i + block_start], local_max);
   }
-  // get max value
-  size_t stride = blockDim.x;
-  for (size_t i = threadIdx.x; i + stride < c; i += stride) {
-    cur_row[threadIdx.x] =
-        fmaxf(cur_row[threadIdx.x], out[i + stride + block_start]);
-  }
+  cur_row[tid] = local_max;
   __syncthreads();
+
+  // Block 内规约 Max
+  size_t stride = blockDim.x;
   while (stride / 2 > 0) {
     stride /= 2;
-    for (size_t j = threadIdx.x; j + stride < c; j += stride) {
-      cur_row[threadIdx.x] = fmaxf(cur_row[threadIdx.x], cur_row[j + stride]);
+    if (tid < stride) {
+      cur_row[tid] = fmaxf(cur_row[tid], cur_row[tid + stride]);
     }
+    __syncthreads();
   }
-  __syncthreads();
   float max_val = cur_row[0];
   __syncthreads();
 
-  // get sum
-  // __shared__ float cur_row[blockDim.x];
+  // 2. get sum & calculate
+  float local_sum = 0.0f;
   stride = blockDim.x;
-  if (threadIdx.x < blockDim.x) {
-    cur_row[threadIdx.x] = expf(in[tid] - max_val);
+  // 写入共享内存的初始值
+  for (size_t i = tid; i < c; i += stride) {
+    out[i + block_start] = expf(in[i + block_start] - max_val);
+    local_sum += out[i + block_start];
   }
-  for (size_t i = threadIdx.x; i + stride < c; i += stride) {
-    out[i] = expf(in[i + stride + block_start] - max_val);
-    cur_row[threadIdx.x] += out[i];
-  }
+  cur_row[tid] = local_sum;
   __syncthreads();
+
   while (stride / 2 > 0) {
     stride /= 2;
-    for (size_t j = threadIdx.x; j + stride < c; j += stride) {
-      cur_row[threadIdx.x] += cur_row[j + stride];
+    if (tid < stride) {
+      cur_row[tid] += cur_row[tid + stride];
     }
+    __syncthreads();
   }
-  __syncthreads();
-  float sum = 1.0f / out[0];
+  float sum = 1.0f / cur_row[0];
 
   // calculate
-  for (size_t i = threadIdx.x; i + stride < c; i += stride) {
+  for (size_t i = tid; i < c; i += blockDim.x) {
     out[i + block_start] *= sum;
   }
 }
@@ -170,6 +171,33 @@ int main() {
   }
 
   // cuda softmax v1
+  // float *d_in, *d_out;
+  // size_t byte_size = kElemNums * sizeof(float);
+  // cudaMalloc(&d_in, byte_size);
+  // cudaMalloc(&d_out, byte_size);
+  // cudaMemcpy(d_in, data.get(), byte_size, cudaMemcpyHostToDevice);
+
+  // cudaEvent_t gpu_start, gpu_end;
+  // cudaEventCreate(&gpu_start);
+  // cudaEventCreate(&gpu_end);
+  // cudaEventRecord(gpu_start);
+  // SoftmaxV1<<<kBlockNums, 1>>>(d_in, d_out, kBlockNums, kBlockSize);
+  // cudaEventRecord(gpu_end);
+  // cudaEventSynchronize(gpu_end);
+  // float gpu_cost = 0.0f;
+  // cudaEventElapsedTime(&gpu_cost, gpu_start, gpu_end);
+  // printf("GPU 执行时间: %f ms\n", gpu_cost);
+
+  // cudaMemcpy(res.get(), d_out, byte_size, cudaMemcpyDeviceToHost);
+
+  // bool gpu_checked1 = VerifyResults(res.get(), data_check.get(), kElemNums);
+  // std::cout << "gpu version1 check: " << (gpu_checked1 ? "pass!" : "fail!")
+  //           << std::endl;
+
+  // cudaFree(d_in);
+  // cudaFree(d_out);
+
+  // cuda softmax v2
   float *d_in, *d_out;
   size_t byte_size = kElemNums * sizeof(float);
   cudaMalloc(&d_in, byte_size);
@@ -180,7 +208,10 @@ int main() {
   cudaEventCreate(&gpu_start);
   cudaEventCreate(&gpu_end);
   cudaEventRecord(gpu_start);
-  SoftmaxV1<<<kBlockNums, 1>>>(d_in, d_out, kBlockNums, kBlockSize);
+
+  SoftmaxV2<<<kBlockNums, 32, 32 * sizeof(float)>>>(d_in, d_out, kBlockNums,
+                                                    kBlockSize);
+
   cudaEventRecord(gpu_end);
   cudaEventSynchronize(gpu_end);
   float gpu_cost = 0.0f;
@@ -189,12 +220,11 @@ int main() {
 
   cudaMemcpy(res.get(), d_out, byte_size, cudaMemcpyDeviceToHost);
 
-  bool gpu_checked1 = VerifyResults(res.get(), data_check.get(), kElemNums);
-  std::cout << "gpu version1 check: " << (gpu_checked1 ? "pass!" : "fail!")
+  bool gpu_checked2 = VerifyResults(res.get(), data_check.get(), kElemNums);
+  std::cout << "gpu version2 check: " << (gpu_checked2 ? "pass!" : "fail!")
             << std::endl;
 
   cudaFree(d_in);
   cudaFree(d_out);
-
   return 0;
 }
