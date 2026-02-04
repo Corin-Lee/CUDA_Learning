@@ -1,8 +1,12 @@
 #include <cuda_runtime.h>
 
+#include <cstddef>
+
+#include "softmax_gpu.cuh"
+
 // 最朴素版本
-__global__ void SoftmaxV1(const float* in, float* out, const size_t n,
-                          const size_t c) {
+__global__ void SoftmaxGpuV1(const float* in, float* out, const size_t n,
+                             const size_t c) {
   // n个block， 每个block 1个线程
   const size_t i = blockIdx.x;
   const float* row_in = in + c * i;

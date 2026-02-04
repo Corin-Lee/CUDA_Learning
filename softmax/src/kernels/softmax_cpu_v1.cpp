@@ -1,6 +1,8 @@
 #include <cmath>
 #include <cstddef>
-void SoftmaxCpu(const float* in, float* out, const size_t n, const size_t c) {
+
+#include "softmax_cpu.hpp"
+void SoftmaxCpuV1(const float* in, float* out, const size_t n, const size_t c) {
   // n * c datas
   for (size_t i = 0; i < n; ++i) {
     const float* row_in = in + c * i;
