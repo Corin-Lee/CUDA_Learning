@@ -1,15 +1,28 @@
+#include <cstdlib>
 #include <iostream>
+#include <string>
 
 #include "execute_softmax_test.hpp"
 #include "softmax_cpu.hpp"
 #include "softmax_gpu.cuh"
 #include "test.hpp"
 
-const size_t kBlockNums = 10;
-const size_t kBlockSize = 512;
+// const size_t kBlockNums = 10;
+// const size_t kBlockSize = 512;
+const size_t kBlockNums = 320;
+const size_t kBlockSize = 4096;
 const size_t kElemNums = kBlockNums * kBlockSize;
 
 int main() {
+  // 0. Create test datas
+  const std::string py_cmd = "python3 ../test_data/test_data_gen.py " +
+                             std::to_string(kBlockNums) + " " +
+                             std::to_string(kBlockSize) + " ../test_data/";
+  if (std::system(py_cmd.data())) {
+    std::cerr << "Create test datas failed!" << std::endl;
+    return -1;
+  }
+
   // 1. Open test datas
   auto data = OpenTestFile("../test_data/input.bin", kElemNums);
   if (data == nullptr) {

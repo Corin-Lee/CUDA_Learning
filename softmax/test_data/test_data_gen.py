@@ -1,6 +1,7 @@
 import numpy as np
+import sys
 
-def generate_softmax_test_data(n, c):
+def generate_softmax_test_data(n, c, dir='./'):
     # 1. 随机生成输入数据 (包含大数值以测试稳定性)
     # 模拟一部分正常分布，一部分极端大值
     data = np.random.randn(n, c).astype(np.float32)
@@ -14,10 +15,13 @@ def generate_softmax_test_data(n, c):
     expected_output = exp_data / np.sum(exp_data, axis=1, keepdims=True)
 
     # 3. 写入二进制文件供 C++ 读取
-    data.tofile("input.bin")    
-    expected_output.tofile("expected.bin")
+    data.tofile(dir + "input.bin")    
+    expected_output.tofile(dir + "expected.bin")
     
-    print(f"✅ Created input.bin and expected.bin (N={n}, C={c})")
+    print(f"[test_data_gen.py]✅: Created input.bin and expected.bin (N={n}, C={c})")
 
-
-generate_softmax_test_data(n=10, c=512)
+if __name__ == '__main__':
+    n = int(sys.argv[1])
+    c = int(sys.argv[2])
+    dir = sys.argv[3] 
+    generate_softmax_test_data(n, c, dir)
