@@ -9,15 +9,15 @@
 
 // const size_t kBlockNums = 10;
 // const size_t kBlockSize = 512;
-const size_t kBlockNums = 320;
-const size_t kBlockSize = 4096;
-const size_t kElemNums = kBlockNums * kBlockSize;
+const size_t kN = 320;
+const size_t kC = 4096;
+const size_t kElemNums = kN * kC;
 
 int main() {
   // 0. Create test datas
   const std::string py_cmd = "python3 ../test_data/test_data_gen.py " +
-                             std::to_string(kBlockNums) + " " +
-                             std::to_string(kBlockSize) + " ../test_data/";
+                             std::to_string(kN) + " " + std::to_string(kC) +
+                             " ../test_data/";
   if (std::system(py_cmd.data())) {
     std::cerr << "Create test datas failed!" << std::endl;
     return -1;
@@ -37,12 +37,12 @@ int main() {
   // 2. run softmax
   // SoftmaxCpuV1
   ExecuteSoftmaxTest("SoftmaxCpuV1", LaunchSoftmaxCpuV1, data.get(),
-                     data_check.get(), kBlockNums, kBlockSize);
+                     data_check.get(), kN, kC);
 
   ExecuteSoftmaxTest("SoftmaxGpuV1", LaunchSoftmaxGpuV1, data.get(),
-                     data_check.get(), kBlockNums, kBlockSize);
+                     data_check.get(), kN, kC);
 
   ExecuteSoftmaxTest("SoftmaxGpuV2", LaunchSoftmaxGpuV2, data.get(),
-                     data_check.get(), kBlockNums, kBlockSize);
+                     data_check.get(), kN, kC);
   return 0;
 }
