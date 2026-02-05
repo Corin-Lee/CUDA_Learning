@@ -7,7 +7,7 @@ void LaunchSoftmaxGpuV1(const float* in, float* out, const size_t n,
   const size_t bytes_nums = n * c * sizeof(float);
   cudaMalloc(&d_out, bytes_nums);
   {
-    ScopedTimerGpu("SoftmaxGpuV1");
+    ScopedTimerGpu gpu_timer("SoftmaxGpuV1");
     SoftmaxGpuV1<<<n, 1>>>(in, d_out, n, c);
   }
   cudaDeviceSynchronize();
@@ -24,7 +24,7 @@ void LaunchSoftmaxGpuV2(const float* in, float* out, const size_t n,
   const size_t bytes_nums = n * c * sizeof(float);
   cudaMalloc(&d_out, bytes_nums);
   {
-    ScopedTimerGpu("SoftmaxGpuV2");
+    ScopedTimerGpu gpu_timer("SoftmaxGpuV2");
     SoftmaxGpuV2<<<n, 32, 32 * sizeof(float)>>>(in, d_out, n, c);
   }
   cudaDeviceSynchronize();

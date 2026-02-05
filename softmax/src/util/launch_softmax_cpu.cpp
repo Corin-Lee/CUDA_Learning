@@ -3,6 +3,6 @@
 
 void LaunchSoftmaxCpuV1(const float* in, float* out, const size_t n,
                         const size_t c) {
-  ScopedTimerCpu("SoftmaxCpuV1");
+  ScopedTimerCpu cpu_timer("SoftmaxCpuV1");
   SoftmaxCpuV1(in, out, n, c);
 }

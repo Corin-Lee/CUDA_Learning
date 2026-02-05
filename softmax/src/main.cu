@@ -7,10 +7,10 @@
 #include "softmax_gpu.cuh"
 #include "test.hpp"
 
-// const size_t kBlockNums = 10;
-// const size_t kBlockSize = 512;
-const size_t kN = 320;
-const size_t kC = 4096;
+// const size_t kN = 10;
+// const size_t kC = 512;
+const size_t kN = 1024;
+const size_t kC = 1024;
 const size_t kElemNums = kN * kC;
 
 int main() {
