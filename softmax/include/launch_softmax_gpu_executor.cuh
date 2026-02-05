@@ -30,7 +30,7 @@ class LaunchSoftmaxGpuExecutor {
     }
     cudaDeviceSynchronize();
     if (cudaGetLastError() != cudaSuccess) {
-      printf("[SoftmaxGpuV2] runs failed!\n");
+      printf("[%s] runs failed!\n", func_name_.c_str());
     }
     cudaMemcpy(out_, d_out, bytes_nums, cudaMemcpyDeviceToHost);
     cudaFree(d_out);

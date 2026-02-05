@@ -35,7 +35,6 @@ int main() {
     return -1;
   }
   // 2. run softmax
-  // SoftmaxCpuV1
   ExecuteSoftmaxTest("SoftmaxCpuV1", LaunchSoftmaxCpuV1, data.get(),
                      data_check.get(), kN, kC);
 
@@ -43,6 +42,9 @@ int main() {
                      data_check.get(), kN, kC);
 
   ExecuteSoftmaxTest("SoftmaxGpuV2", LaunchSoftmaxGpuV2, data.get(),
+                     data_check.get(), kN, kC);
+
+  ExecuteSoftmaxTest("SoftmaxGpuV3", LaunchSoftmaxGpuV3, data.get(),
                      data_check.get(), kN, kC);
   return 0;
 }

@@ -15,3 +15,10 @@ void LaunchSoftmaxGpuV2(const float* in, float* out, const size_t n,
                                           n, c);
   softmax_gpu_v2.run({n, 32, 32 * sizeof(float)});
 }
+
+void LaunchSoftmaxGpuV3(const float* in, float* out, const size_t n,
+                        const size_t c) {
+  LaunchSoftmaxGpuExecutor softmax_gpu_v3(SoftmaxGpuV3, "SoftmaxGpuV3", in, out,
+                                          n, c);
+  softmax_gpu_v3.run({n, 32});
+}
