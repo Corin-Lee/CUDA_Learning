@@ -19,10 +19,17 @@ class LaunchSoftmaxGpuExecutor {
                            const size_t c)
       : func_(func), func_name_(func_name), in_(in), out_(out), n_(n), c_(c) {}
 
-  void run(SoftmaxGpuKernelConfig config) {
+  void run(SoftmaxGpuKernelConfig config, bool warm_up = false,
+           size_t warm_up_times = 0) {
     float* d_out;
     const size_t bytes_nums = n_ * c_ * sizeof(float);
     cudaMalloc(&d_out, bytes_nums);
+    if (warm_up && warm_up_times > 0) {
+      for (size_t i = 0; i < warm_up_times; ++i) {
+        func_<<<config.grid, config.block, config.shared_mem>>>(in_, d_out, n_,
+                                                                c_);
+      }
+    }
     {
       ScopedTimerGpu gpu_timer(func_name_);
       func_<<<config.grid, config.block, config.shared_mem>>>(in_, d_out, n_,

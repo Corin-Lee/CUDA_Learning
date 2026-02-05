@@ -9,8 +9,8 @@
 
 // const size_t kN = 10;
 // const size_t kC = 512;
-const size_t kN = 1024;
-const size_t kC = 1024;
+const size_t kN = 256;
+const size_t kC = 4096;
 const size_t kElemNums = kN * kC;
 
 int main() {
@@ -45,6 +45,9 @@ int main() {
                      data_check.get(), kN, kC);
 
   ExecuteSoftmaxTest("SoftmaxGpuV3", LaunchSoftmaxGpuV3, data.get(),
+                     data_check.get(), kN, kC);
+
+  ExecuteSoftmaxTest("SoftmaxGpuV4", LaunchSoftmaxGpuV4, data.get(),
                      data_check.get(), kN, kC);
   return 0;
 }

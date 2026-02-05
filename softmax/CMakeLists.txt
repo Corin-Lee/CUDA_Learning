@@ -20,6 +20,7 @@ set(SOURCES
   src/kernels/softmax_gpu_v1.cu
   src/kernels/softmax_gpu_v2.cu
   src/kernels/softmax_gpu_v3.cu
+  src/kernels/softmax_gpu_v4.cu
 
   src/util/launch_softmax_cpu.cpp
   src/util/launch_softmax_gpu.cu

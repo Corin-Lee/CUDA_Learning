@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 
+// 线程块只包含1个线程束
 __global__ void SoftmaxGpuV3(const float* in, float* out, const size_t n,
                              const size_t c) {
   const int block_start = blockIdx.x * c;
